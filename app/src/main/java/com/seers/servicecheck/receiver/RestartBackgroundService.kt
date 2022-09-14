@@ -12,11 +12,15 @@ class RestartBackgroundService: BroadcastReceiver(){
     override fun onReceive(context: Context?, intent: Intent?) {
         Log.i("Broadcast Listened", "Service tried to stop")
         Toast.makeText(context, "Service restarted", Toast.LENGTH_SHORT).show()
-
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-            context!!.startForegroundService(Intent(context, LocationService::class.java))
-        }else{
-            context!!.startService(Intent(context, LocationService::class.java))
+        if(intent != null){
+            if("restartservice" == intent.action){
+                var rebootIntent = Intent(context, LocationService::class.java)
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+                    context!!.startForegroundService(rebootIntent)
+                }else{
+                    context!!.startService(rebootIntent)
+                }
+            }
         }
     }
 }
