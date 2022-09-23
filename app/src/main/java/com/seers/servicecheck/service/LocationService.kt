@@ -36,14 +36,18 @@ class LocationService: Service() {
 
     private var isFirstLoading = true
 
+    private var isLocationCall = false
+
     override fun onCreate() {
         super.onCreate()
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) createNotificationChannel() else startForeground(
-            1,
+            ConstantData.NOTI_SERVICE_ID,
             Notification()
         )
+
         requestLocationUpdates()
+
     }
 
 
@@ -69,6 +73,7 @@ class LocationService: Service() {
             .build()
         startForeground(ConstantData.NOTI_SERVICE_ID, notification)
 
+
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -81,7 +86,7 @@ class LocationService: Service() {
         super.onDestroy()
         stopTimerTask()
         val broadcastIntent = Intent()
-        broadcastIntent.action = "restartservice"
+        broadcastIntent.action = "android.intent.action.BOOT_COMPLETED"
         broadcastIntent.setClass(this, RestartBackgroundService::class.java)
         this.sendBroadcast(broadcastIntent)
     }
@@ -92,6 +97,23 @@ class LocationService: Service() {
         timer = Timer()
         timerTask = object : TimerTask(){
             override fun run() {
+                /*if(!isLocationCall){
+                    requestLocationUpdates()
+                }else{
+                    if(currentLocation != null){
+                        val lbm = LocalBroadcastManager.getInstance(applicationContext)
+                        val dataIntent = Intent("seers.locationservice")
+                        dataIntent.putExtra("type", 1)  //0: 초기 지도 셋팅, 1: 위치값
+                        dataIntent.putExtra("latitude", currentLocation!!.latitude)
+                        dataIntent.putExtra("longitude", currentLocation!!.longitude)
+                        lbm.sendBroadcast(dataIntent)
+
+                        showNotification(ConstantData.NOTI_LOCATION_ID, "location:"+currentLocation!!.latitude + ">>"+currentLocation!!.longitude)
+
+                        checkLocation()
+
+                    }
+                }*/
                 if(currentLocation != null){
                     val lbm = LocalBroadcastManager.getInstance(applicationContext)
                     val dataIntent = Intent("seers.locationservice")
@@ -100,7 +122,7 @@ class LocationService: Service() {
                     dataIntent.putExtra("longitude", currentLocation!!.longitude)
                     lbm.sendBroadcast(dataIntent)
 
-                    App.instance.showNotification(ConstantData.NOTI_LOCATION_ID, "location:"+currentLocation!!.latitude + ">>"+currentLocation!!.longitude)
+                    showNotification(ConstantData.NOTI_LOCATION_ID, "location:"+currentLocation!!.latitude + ">>"+currentLocation!!.longitude)
 
                     checkLocation()
 
@@ -127,9 +149,12 @@ class LocationService: Service() {
 
         val permission = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
         if(permission == PackageManager.PERMISSION_GRANTED){
+            Log.e("ssshin", "PERMISSION_GRANTED")
             client.requestLocationUpdates(request, object : LocationCallback(){
                 override fun onLocationResult(locationResult: LocationResult?) {
+                    Log.e("ssshin", "locationResult:"+locationResult)
                     locationResult?.let {
+                        isLocationCall = true
                         val location = it.lastLocation
                         if(location != null){
                             currentLocation = location
@@ -149,7 +174,7 @@ class LocationService: Service() {
                                 dataIntent.putExtra("longitude", currentLocation!!.longitude)
                                 lbm.sendBroadcast(dataIntent)
 
-                                App.instance.showNotification(ConstantData.NOTI_LOCATION_ID, "location:"+currentLocation!!.latitude + ">>"+currentLocation!!.longitude)
+                                showNotification(ConstantData.NOTI_LOCATION_ID, "location:"+currentLocation!!.latitude + ">>"+currentLocation!!.longitude)
 
                                 checkLocation()
 
@@ -157,6 +182,8 @@ class LocationService: Service() {
                         }
                     }
                 }
+
+
             }, null)
         }
     }
@@ -172,9 +199,9 @@ class LocationService: Service() {
                     Log.e("checkLocation", "currentIsInside:"+currentIsInside+">>save:"+list[i].isInside)
                     if(list[i].isInside != currentIsInside){
                         if(list[i].isInside){   //in -> out
-                            App.instance.showNotification(ConstantData.NOTI_ALERT_ID, list[i].name + "에서 텨나갔습니다.")
+                            showNotification(ConstantData.NOTI_ALERT_ID, list[i].name + "에서 텨나갔습니다.")
                         }else{  //out -> in
-                            App.instance.showNotification(ConstantData.NOTI_ALERT_ID, list[i].name + "으로 기어들어왔습니다.")
+                            showNotification(ConstantData.NOTI_ALERT_ID, list[i].name + "으로 기어들어왔습니다.")
                         }
                     }
 
@@ -195,7 +222,7 @@ class LocationService: Service() {
                 }
 
                 if(nearSettingName != null){
-                    App.instance.showNotification(ConstantData.NOTI_ALERT_DISTANCE_ID, nearSettingName + "과의 거리:"+nearSettingDistance+"m")
+                    showNotification(ConstantData.NOTI_ALERT_DISTANCE_ID, nearSettingName + "과의 거리:"+nearSettingDistance+"m")
                 }
 
             }
@@ -266,6 +293,33 @@ class LocationService: Service() {
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
+    }
+
+
+    fun showNotification(notiId: Int, content: String){
+        val channelId = "com.seers.servicecheck.noti"
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationBuilder: Notification.Builder
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            notificationBuilder = Notification.Builder(this, channelId)
+            val channelName = "알림"
+            val chan = NotificationChannel(
+                channelId,
+                channelName,
+                NotificationManager.IMPORTANCE_NONE
+            )
+            chan.lightColor = Color.BLUE
+            chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            manager.createNotificationChannel(chan)
+        }else{
+            notificationBuilder = Notification.Builder(this)
+        }
+        val notification: Notification = notificationBuilder
+            .setContentTitle("TestApp")
+            .setContentText(content)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .build()
+        manager.notify(notiId, notification)
     }
 
 

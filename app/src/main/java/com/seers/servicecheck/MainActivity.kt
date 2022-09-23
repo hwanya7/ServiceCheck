@@ -57,7 +57,12 @@ class MainActivity : AppCompatActivity(), MapView.MapViewEventListener {
         }
 
         requestPermissionsSafely(
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 200
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.RECEIVE_BOOT_COMPLETED,
+                Manifest.permission.WAKE_LOCK,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ), 200
         )
 
 
@@ -65,7 +70,11 @@ class MainActivity : AppCompatActivity(), MapView.MapViewEventListener {
             mLocationService = LocationService()
             mServiceIntent = Intent(this, mLocationService.javaClass)
             if(!Util.isMyServiceRunning(mLocationService.javaClass, mActivity)){
-                startService(mServiceIntent)
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+                    startForegroundService(mServiceIntent)
+                }else{
+                    startService(mServiceIntent)
+                }
                 Toast.makeText(mActivity, R.string.service_start_successfully, Toast.LENGTH_SHORT).show()
             }else{
                 Toast.makeText(mActivity, R.string.service_already_running, Toast.LENGTH_SHORT).show()
