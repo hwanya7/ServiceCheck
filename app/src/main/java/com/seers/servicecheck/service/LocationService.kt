@@ -2,10 +2,7 @@ package com.seers.servicecheck.service
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,20 +11,18 @@ import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.widget.RemoteViews
 import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.*
-import com.seers.servicecheck.App
-import com.seers.servicecheck.ConstantData
-import com.seers.servicecheck.PreferenceUtil
+import com.seers.servicecheck.*
 import com.seers.servicecheck.R
 import com.seers.servicecheck.data.LocationData
 import com.seers.servicecheck.data.LocationDataListWrapper
 import com.seers.servicecheck.receiver.RestartBackgroundService
 import java.util.*
-import kotlin.collections.ArrayList
+
 
 class LocationService: Service() {
 
@@ -65,12 +60,22 @@ class LocationService: Service() {
         chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(chan)
+
+        val remoteViews = RemoteViews(packageName, R.layout.notification_service)
+
+        var mainIntent = Intent(applicationContext, MainActivity::class.java)
+        var pendingIntent = PendingIntent.getActivity(applicationContext, 0, mainIntent, 0)
         val notificationBuilder = Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
+
         val notification: Notification = notificationBuilder.setOngoing(true)
             .setContentTitle("title")
             .setContentText("App is running")
             .setCategory(Notification.CATEGORY_SERVICE)
+            .setCustomContentView(remoteViews)
+            .setContentIntent(pendingIntent)
             .build()
+
+        //notification.contentIntent = pendingIntent
         startForeground(ConstantData.NOTI_SERVICE_ID, notification)
 
 
@@ -98,7 +103,6 @@ class LocationService: Service() {
         timerTask = object : TimerTask(){
             override fun run() {
                 /*if(!isLocationCall){
-                    requestLocationUpdates()
                 }else{
                     if(currentLocation != null){
                         val lbm = LocalBroadcastManager.getInstance(applicationContext)
@@ -306,7 +310,7 @@ class LocationService: Service() {
             val chan = NotificationChannel(
                 channelId,
                 channelName,
-                NotificationManager.IMPORTANCE_NONE
+                NotificationManager.IMPORTANCE_MIN
             )
             chan.lightColor = Color.BLUE
             chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
@@ -314,10 +318,13 @@ class LocationService: Service() {
         }else{
             notificationBuilder = Notification.Builder(this)
         }
+        var mainIntent = Intent(applicationContext, MainActivity::class.java)
+        var pendingIntent = PendingIntent.getActivity(applicationContext, 0, mainIntent, 0)
         val notification: Notification = notificationBuilder
             .setContentTitle("TestApp")
             .setContentText(content)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
             .build()
         manager.notify(notiId, notification)
     }
